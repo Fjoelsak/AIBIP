@@ -1,0 +1,10 @@
+# IDE
+.idea/
+
+# Downloaded datasets
+06-Generative_Image_Models/data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/

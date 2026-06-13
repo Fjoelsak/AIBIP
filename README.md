@@ -8,3 +8,4 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - 62-PixelCNN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/06-Generative_Image_Models/62-PixelCNN.ipynb)
 - 63-Autoencoder.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/06-Generative_Image_Models/63-Autoencoder.ipynb)
 - 64-AnomalyDetection.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/anomaly-detection/06-Generative_Image_Models/64-AnomalyDetection.ipynb)
+- 65-VAE.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/vae-notebook/06-Generative_Image_Models/65-VAE.ipynb)

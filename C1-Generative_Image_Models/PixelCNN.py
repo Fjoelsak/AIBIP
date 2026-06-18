@@ -140,6 +140,7 @@ class FastPixelCNN(nn.Module):
         Returns:
             None
         """
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         torch.save(self.state_dict(), path)
         print(f"Model saved to {path}.")
 

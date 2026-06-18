@@ -3,9 +3,14 @@ Repository for the WK_2630 course on AI Based Image Processing
 
 Here are the jupyter notebooks of the chapters available in colab for direct use:
 
-## 06-Generative Image Models 
-- 61-1D_Gaussian_Density_Model.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/06-Generative_Image_Models/61-1D_Gaussian_Density_Model.ipynb)
-- 62-PixelCNN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/06-Generative_Image_Models/62-PixelCNN.ipynb)
-- 63-Autoencoder.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/06-Generative_Image_Models/63-Autoencoder.ipynb)
-- 64-AnomalyDetection.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/anomaly-detection/06-Generative_Image_Models/64-AnomalyDetection.ipynb)
-- 65-VAE.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/06-Generative_Image_Models/65-VAE.ipynb)
+## C1 - Generative Image Models
+- C1-1-1D_Gaussian_Density_Model.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C1-Generative_Image_Models/C1-1-1D_Gaussian_Density_Model.ipynb)
+- C1-2-PixelCNN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C1-Generative_Image_Models/C1-2-PixelCNN.ipynb)
+
+## C2 - Autoencoders
+- C2-1-Autoencoder.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-1-Autoencoder.ipynb)
+- C2-2-AnomalyDetection.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-2-AnomalyDetection.ipynb)
+- C2-3-VAE.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-3-VAE.ipynb)
+
+## C3 - GANs
+- C3-1-GAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-1-GAN.ipynb)

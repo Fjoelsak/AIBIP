@@ -8,3 +8,6 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# Instructor-only material (kept local, not for students)
+**/INSTRUCTOR_*.md

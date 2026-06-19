@@ -16,3 +16,4 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 
 ## C3 - GANs
 - C3-1-GAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-1-GAN.ipynb)
+- C3-2-StyleGAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-2-StyleGAN.ipynb)

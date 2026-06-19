@@ -198,9 +198,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--latent-dim", type=int, default=256,
                         help="Latent space dimensionality (default: 256).")
     parser.add_argument("--beta", type=float, default=1.0,
-                        help="Weight on the KL term (beta-VAE). For --loss bce use ~0.5-1.0; "
-                             "for mse/perceptual the KL is mean-scaled, so values like "
-                             "1.0 work directly. Default: 1.0.")
+                        help="Weight on the KL term (beta-VAE). For --loss bce use ~0.5-1.0. "
+                             "For mse/perceptual the KL is mean-scaled and tiny relative to "
+                             "the reconstruction term, so a much larger beta (~10) is needed "
+                             "to keep prior samples close to N(0, I). Default: 1.0.")
     parser.add_argument("--loss", choices=("bce", "mse", "perceptual"), default="bce",
                         help="Reconstruction loss. 'perceptual' adds a VGG16 feature loss "
                              "for visibly sharper faces (slower, needs torchvision VGG "

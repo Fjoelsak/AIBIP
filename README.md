@@ -11,7 +11,8 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - C2-1-Autoencoder.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-1-Autoencoder.ipynb)
 - C2-2-AnomalyDetection.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-2-AnomalyDetection.ipynb)
 - C2-3-VAE.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-3-VAE.ipynb)
-- C2-4-VAE_CelebA.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-4-VAE_CelebA.ipynb)
+- C2-4-VAE_Fashion_MNIST.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-4-VAE_Fashion_MNIST.ipynb)
+- C2-5-VAE_CelebA.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-5-VAE_CelebA.ipynb)
 
 ## C3 - GANs
 - C3-1-GAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-1-GAN.ipynb)

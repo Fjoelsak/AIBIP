@@ -11,3 +11,7 @@ __pycache__/
 
 # Instructor-only material (kept local, not for students)
 **/INSTRUCTOR_*.md
+
+# StyleGAN2 runtime artifacts (downloaded / cloned by the notebook)
+**/ffhq.pkl
+**/stylegan2-ada-pytorch/

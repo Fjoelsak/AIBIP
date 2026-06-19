@@ -15,4 +15,5 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - C2-5-VAE_CelebA.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C2-Autoencoders/C2-5-VAE_CelebA.ipynb)
 
 ## C3 - GANs
-- C3-1-GAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-1-GAN.ipynb)
+- C3-1-DCGAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-1-DCGAN.ipynb)
+- C3-2-StyleGAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-2-StyleGAN.ipynb)

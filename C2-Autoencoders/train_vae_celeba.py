@@ -23,13 +23,59 @@ from __future__ import annotations
 
 import argparse
 
+import glob
+
 import torch
 import torch.optim as optim
 import torchvision.transforms as T
-from torch.utils.data import DataLoader
-from torchvision.datasets import CelebA, ImageFolder
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import CelebA
 
 from VAE_CelebA import VAE, vae_loss
+
+IMAGE_EXTENSIONS = ("*.jpg", "*.jpeg", "*.png", "*.bmp")
+
+
+class FlatImageFolder(Dataset):
+    """
+    Dataset over a flat folder of images (no class subdirectories required).
+
+    Unlike ``torchvision.datasets.ImageFolder``, this loads images that sit
+    directly inside ``root``. If ``root`` itself contains no images but has a
+    single subdirectory that does, it transparently descends into it — this
+    handles the common ``celeba/img_align_celeba/img_align_celeba/`` nesting.
+
+    Args:
+        root      (str):        Folder containing the image files.
+        transform (T.Compose):  Preprocessing applied to each PIL image.
+    """
+
+    def __init__(self, root: str, transform: T.Compose):
+        self.transform = transform
+        self.paths = self._collect(root)
+        if not self.paths:
+            raise FileNotFoundError(f"No images found in {root} (or its single subfolder).")
+        print(f"Found {len(self.paths)} images under {root}.")
+
+    @staticmethod
+    def _collect(root: str) -> list[str]:
+        paths: list[str] = []
+        for ext in IMAGE_EXTENSIONS:
+            paths.extend(glob.glob(f"{root}/{ext}"))
+        if paths:
+            return sorted(paths)
+        # Descend one level if images are nested in a single subfolder.
+        for ext in IMAGE_EXTENSIONS:
+            paths.extend(glob.glob(f"{root}/*/{ext}"))
+        return sorted(paths)
+
+    def __len__(self) -> int:
+        return len(self.paths)
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
+        img = Image.open(self.paths[idx]).convert("RGB")
+        return self.transform(img), 0   # dummy label (unused during training)
 
 
 def build_transform() -> T.Compose:
@@ -49,7 +95,7 @@ def build_dataset(args: argparse.Namespace, transform: T.Compose):
     is frequently rate-limited ("quota exceeded"). To avoid that, set
     ``--data-dir`` to a folder of pre-downloaded face images (e.g. the aligned
     images from the Kaggle CelebA mirror). Training only needs the pixels, not
-    the attribute labels, so a plain ``ImageFolder`` is sufficient.
+    the attribute labels, so a flat folder of images is sufficient.
 
     Args:
         args      (argparse.Namespace): Parsed command-line arguments.
@@ -60,10 +106,10 @@ def build_dataset(args: argparse.Namespace, transform: T.Compose):
             The label is unused during training.
     """
     if args.data_dir is not None:
-        # ImageFolder expects one or more class subdirectories. If the images
-        # sit directly in --data-dir, point it at the parent folder instead.
+        # FlatImageFolder handles both layouts: images directly inside
+        # --data-dir, or nested one level deeper in a single subfolder.
         print(f"Loading images from folder: {args.data_dir}")
-        return ImageFolder(root=args.data_dir, transform=transform)
+        return FlatImageFolder(root=args.data_dir, transform=transform)
 
     print("No --data-dir given; falling back to torchvision CelebA download.")
     return CelebA(

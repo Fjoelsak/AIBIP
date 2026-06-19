@@ -2,7 +2,7 @@
 .idea/
 
 # Downloaded datasets
-06-Generative_Image_Models/data/
+**/data/
 
 # Python
 __pycache__/

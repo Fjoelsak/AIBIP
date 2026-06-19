@@ -322,3 +322,89 @@ def vae_loss(
     recon = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum") / batch_size
     kl = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp()) / batch_size
     return recon + beta * kl, recon, kl
+
+
+def kl_divergence(mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
+    """
+    Closed-form KL divergence KL(q(z|x) || N(0, I)), averaged over the batch.
+
+    Args:
+        mu      (torch.Tensor): Posterior mean,    shape (B, latent_dim).
+        log_var (torch.Tensor): Posterior log-var, shape (B, latent_dim).
+
+    Returns:
+        torch.Tensor: Scalar KL divergence.
+    """
+    return -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp()) / mu.size(0)
+
+
+class PerceptualLoss(nn.Module):
+    """
+    VGG16 feature-space reconstruction loss for sharper image generation.
+
+    Plain pixel losses (BCE/MSE) penalise per-pixel intensity differences,
+    which encourages the decoder to output the blurry per-pixel average of all
+    plausible reconstructions. Comparing images in the feature space of a
+    pre-trained VGG16 network instead rewards matching edges, textures, and
+    structure, producing visibly sharper faces.
+
+    The total reconstruction term combes a pixel MSE with the VGG feature MSE:
+
+        recon = MSE(x_hat, x)  +  perceptual_weight * sum_l MSE(phi_l(x_hat), phi_l(x))
+
+    where ``phi_l`` are the activations at a few selected VGG layers. The VGG
+    weights are frozen and excluded from optimisation.
+
+    Args:
+        perceptual_weight (float): Weight on the VGG feature term. Default: 0.1.
+        layers (tuple[int, ...]):  Indices into ``vgg16.features`` at whose
+            outputs the feature distance is measured. Defaults to relu1_2,
+            relu2_2, relu3_3.
+    """
+
+    # ImageNet normalisation constants expected by torchvision VGG.
+    _MEAN = (0.485, 0.456, 0.406)
+    _STD = (0.229, 0.224, 0.225)
+
+    def __init__(self, perceptual_weight: float = 0.1, layers: tuple[int, ...] = (3, 8, 15)):
+        super().__init__()
+        from torchvision.models import VGG16_Weights, vgg16
+
+        self.perceptual_weight = perceptual_weight
+        self.layers = layers
+        vgg = vgg16(weights=VGG16_Weights.DEFAULT).features
+        self.vgg = vgg.eval()
+        for p in self.vgg.parameters():
+            p.requires_grad_(False)
+        self.register_buffer("mean", torch.tensor(self._MEAN).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor(self._STD).view(1, 3, 1, 1))
+
+    def _features(self, x: torch.Tensor) -> list[torch.Tensor]:
+        """Run x through VGG and collect activations at the selected layers."""
+        x = (x - self.mean) / self.std
+        feats, h = [], x
+        for i, layer in enumerate(self.vgg):
+            h = layer(h)
+            if i in self.layers:
+                feats.append(h)
+            if i >= max(self.layers):
+                break
+        return feats
+
+    def forward(self, x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        """
+        Compute pixel MSE plus weighted VGG feature MSE between x_hat and x.
+
+        Args:
+            x_hat (torch.Tensor): Reconstructed images, shape (B, 3, 64, 64) in [0, 1].
+            x     (torch.Tensor): Ground-truth images, same shape as x_hat.
+
+        Returns:
+            torch.Tensor: Scalar reconstruction loss.
+        """
+        pixel = nn.functional.mse_loss(x_hat, x)
+        feat = sum(
+            nn.functional.mse_loss(fh, ft)
+            for fh, ft in zip(self._features(x_hat), self._features(x))
+        )
+        return pixel + self.perceptual_weight * feat

@@ -32,7 +32,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import CelebA
 
-from VAE_CelebA import VAE, vae_loss
+from VAE_CelebA import VAE, PerceptualLoss, kl_divergence
 
 IMAGE_EXTENSIONS = ("*.jpg", "*.jpeg", "*.png", "*.bmp")
 
@@ -141,6 +141,24 @@ def train(args: argparse.Namespace) -> None:
     model = VAE(latent_dim=args.latent_dim).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+    # Select the reconstruction loss. BCE uses the summed-per-image scale
+    # (recon ~6000), so KL must be on the same scale (summed). MSE/perceptual
+    # use mean scale (recon ~0.01), so KL is divided by the pixel count to keep
+    # the two terms comparable; beta then has a sensible effect.
+    print(f"Reconstruction loss: {args.loss} (beta={args.beta})")
+    perceptual = None
+    if args.loss == "perceptual":
+        perceptual = PerceptualLoss(perceptual_weight=args.perceptual_weight).to(device)
+
+    n_pixels = 3 * 64 * 64
+
+    def reconstruction(x_hat, x):
+        if args.loss == "bce":
+            return nn.functional.binary_cross_entropy(x_hat, x, reduction="sum") / x.size(0)
+        if args.loss == "mse":
+            return nn.functional.mse_loss(x_hat, x)
+        return perceptual(x_hat, x)
+
     for epoch in range(args.epochs):
         model.train()
         running = running_recon = running_kl = 0.0
@@ -148,7 +166,10 @@ def train(args: argparse.Namespace) -> None:
             imgs = imgs.to(device, non_blocking=True)
             optimizer.zero_grad()
             x_hat, mu, log_var = model(imgs)
-            loss, recon, kl = vae_loss(imgs, x_hat, mu, log_var, beta=args.beta)
+            recon = reconstruction(x_hat, imgs)
+            kl = kl_divergence(mu, log_var)
+            kl_scaled = kl if args.loss == "bce" else kl / n_pixels
+            loss = recon + args.beta * kl_scaled
             loss.backward()
             optimizer.step()
             running       += loss.item()
@@ -157,9 +178,9 @@ def train(args: argparse.Namespace) -> None:
         n = len(train_loader)
         print(
             f"Epoch {epoch + 1:2d}/{args.epochs} | "
-            f"loss {running / n:8.2f} | "
-            f"recon {running_recon / n:8.2f} | "
-            f"kl {running_kl / n:6.2f}"
+            f"loss {running / n:10.4f} | "
+            f"recon {running_recon / n:10.4f} | "
+            f"kl {running_kl / n:7.2f}"
         )
 
     model.save_model(args.out)
@@ -177,13 +198,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--latent-dim", type=int, default=256,
                         help="Latent space dimensionality (default: 256).")
     parser.add_argument("--beta", type=float, default=1.0,
-                        help="Weight on the KL term (beta-VAE, default: 1.0).")
+                        help="Weight on the KL term (beta-VAE). For --loss bce use ~0.5-1.0; "
+                             "for mse/perceptual the KL is mean-scaled, so values like "
+                             "1.0 work directly. Default: 1.0.")
+    parser.add_argument("--loss", choices=("bce", "mse", "perceptual"), default="bce",
+                        help="Reconstruction loss. 'perceptual' adds a VGG16 feature loss "
+                             "for visibly sharper faces (slower, needs torchvision VGG "
+                             "weights). Default: bce.")
+    parser.add_argument("--perceptual-weight", type=float, default=0.1,
+                        help="Weight on the VGG feature term when --loss perceptual "
+                             "(default: 0.1).")
     parser.add_argument("--data-root", type=str, default="./data",
                         help="Root for the torchvision CelebA download (default: ./data). "
                              "Only used when --data-dir is not given.")
     parser.add_argument("--data-dir", type=str, default=None,
                         help="Path to a local folder of pre-downloaded face images "
-                             "(loaded via ImageFolder, no download, no attribute labels). "
+                             "(loaded flat, no download, no attribute labels). "
                              "Use this to avoid the rate-limited Google Drive mirror.")
     parser.add_argument("--num-workers", type=int, default=2,
                         help="DataLoader worker processes (default: 2).")

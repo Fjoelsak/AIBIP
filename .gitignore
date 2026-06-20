@@ -15,3 +15,6 @@ __pycache__/
 # StyleGAN2 runtime artifacts (downloaded / cloned by the notebook)
 **/ffhq.pkl
 **/stylegan2-ada-pytorch/
+
+# f-AnoGAN weights are too large for git — published as a GitHub release asset
+C3-GANs/models/fanogan/

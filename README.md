@@ -32,3 +32,4 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 
 ## C6 - Evaluation
 - C6-1-Evaluation_Metrics.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C6-Evaluation/C6-1-Evaluation_Metrics.ipynb)
+- C6-2-Risks_and_Responsibility.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C6-Evaluation/C6-2-Risks_and_Responsibility.ipynb)

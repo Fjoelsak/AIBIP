@@ -1,3 +1,14 @@
 matplotlib~=3.10.8
 torch~=2.10.0
 torchvision~=0.25.0
+
+# Quantitative evaluation (C6-1). The [image] extra pulls in torch-fidelity,
+# which the Frechet Inception Distance metric requires.
+torchmetrics[image]~=1.9.0
+
+# Stable Diffusion notebooks (C4-6, C5) install these themselves in a notebook
+# cell, since they are meant to run on Colab with a GPU and are not needed for
+# local CPU development. Pinned versions for reference:
+#   diffusers==0.31.0
+#   transformers==4.44.2
+#   accelerate==0.34.2

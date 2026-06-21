@@ -18,3 +18,6 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - C3-1-DCGAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-1-DCGAN.ipynb)
 - C3-2-StyleGAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-2-StyleGAN.ipynb)
 - C3-3-AnoGAN.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C3-GANs/C3-3-AnoGAN.ipynb)
+
+## C4 - Diffusion Models
+- C4-1-ForwardDiffusion.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-1-ForwardDiffusion.ipynb)

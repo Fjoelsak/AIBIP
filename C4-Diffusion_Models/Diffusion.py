@@ -257,6 +257,78 @@ class DDPM(nn.Module):
             return x, trajectory
         return x
 
+    @torch.no_grad()
+    def ddim_sample(self, n: int, steps: int = 50, eta: float = 0.0,
+                    device: str = "cpu", return_trajectory: bool = False):
+        """
+        Generate images with the DDIM sampler (Song et al., 2021).
+
+        DDIM reuses the *same* trained noise-prediction network as `sample`
+        but follows a shorter, non-Markovian reverse path. Instead of all T
+        ancestral steps it visits only a sub-sequence of `steps` timesteps,
+        which makes sampling roughly T / steps times faster.
+
+        At each step the model predicts the noise, from which the clean image
+        is estimated:
+
+            x0_pred = (x_t - sqrt(1 - alpha_bar_t) * eps) / sqrt(alpha_bar_t)
+
+        and x_t is then mapped to the next (less noisy) timestep. The amount
+        of stochasticity is controlled by `eta`:
+
+            eta = 0.0  -> fully deterministic (classic DDIM)
+            eta = 1.0  -> equivalent to the DDPM ancestral sampler
+
+        Args:
+            n                 (int): Number of images to generate.
+            steps             (int): Number of reverse steps (<= timesteps).
+            eta               (float): Stochasticity in [0, 1]. Default: 0.0.
+            device            (str): Target device. Default: "cpu".
+            return_trajectory (bool): If True, also return intermediate states.
+
+        Returns:
+            torch.Tensor: Generated images of shape (n, 1, 28, 28) in [-1, 1].
+            (optionally) list[torch.Tensor]: Intermediate states if requested.
+        """
+        # Evenly spaced sub-sequence of timesteps, from high noise to low.
+        step_indices = torch.linspace(0, self.timesteps - 1, steps,
+                                      device=device).long()
+        step_indices = torch.flip(step_indices, dims=[0])
+
+        x = torch.randn(n, 1, 28, 28, device=device)
+        trajectory = []
+
+        for i, step in enumerate(step_indices):
+            t = torch.full((n,), step, device=device, dtype=torch.long)
+            noise_pred = self.model(x, t)
+
+            alpha_bar = self.alphas_bar[step]
+            # alpha_bar at the next (less noisy) timestep, or 1 at the end.
+            if i < len(step_indices) - 1:
+                alpha_bar_next = self.alphas_bar[step_indices[i + 1]]
+            else:
+                alpha_bar_next = torch.tensor(1.0, device=device)
+
+            # Predict the clean image x_0 from x_t and the estimated noise.
+            x0_pred = (x - torch.sqrt(1 - alpha_bar) * noise_pred) / torch.sqrt(alpha_bar)
+
+            # DDIM variance term; eta interpolates between deterministic and DDPM.
+            sigma = eta * torch.sqrt(
+                (1 - alpha_bar_next) / (1 - alpha_bar) * (1 - alpha_bar / alpha_bar_next)
+            )
+            # Direction pointing towards x_t, scaled to the next noise level.
+            dir_xt = torch.sqrt(1 - alpha_bar_next - sigma ** 2) * noise_pred
+            x = torch.sqrt(alpha_bar_next) * x0_pred + dir_xt
+            if eta > 0 and i < len(step_indices) - 1:
+                x = x + sigma * torch.randn_like(x)
+
+            if return_trajectory:
+                trajectory.append(x.clone())
+
+        if return_trajectory:
+            return x, trajectory
+        return x
+
     def save_model(self, path: str = "models/ddpm_fashion_mnist.pth"):
         """
         Save the full model state dictionary.

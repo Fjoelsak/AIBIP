@@ -72,12 +72,21 @@ class UNet(nn.Module):
     grayscale images (Fashion-MNIST / MNIST). The network takes the noisy
     image x_t and the timestep t, and outputs an estimate of the noise eps.
 
+    Optionally the network can be **class-conditioned**: if ``num_classes`` is
+    given, a learned class embedding is added to the timestep embedding, so the
+    same network can be steered to generate a specific category. A dedicated
+    "null" class (index ``num_classes``) represents the unconditional case,
+    which is needed for classifier-free guidance.
+
     Args:
-        channels  (int): Base channel width. Default: 64.
-        time_dim  (int): Timestep embedding dimension. Default: 256.
+        channels    (int): Base channel width. Default: 64.
+        time_dim    (int): Timestep embedding dimension. Default: 256.
+        num_classes (int): Number of conditioning classes, or None for an
+                           unconditional model. Default: None.
     """
 
-    def __init__(self, channels: int = 64, time_dim: int = 256):
+    def __init__(self, channels: int = 64, time_dim: int = 256,
+                 num_classes: int = None):
         super().__init__()
         self.time_dim = time_dim
         self.time_mlp = nn.Sequential(
@@ -85,6 +94,12 @@ class UNet(nn.Module):
             nn.SiLU(),
             nn.Linear(time_dim, time_dim),
         )
+
+        # Optional class conditioning. The extra (num_classes)-th index is the
+        # "null" / unconditional token used by classifier-free guidance.
+        self.num_classes = num_classes
+        if num_classes is not None:
+            self.class_emb = nn.Embedding(num_classes + 1, time_dim)
 
         # Encoder
         self.in_conv = nn.Conv2d(1, channels, kernel_size=3, padding=1)        # 28x28
@@ -105,18 +120,31 @@ class UNet(nn.Module):
         self.out_norm = nn.GroupNorm(8, channels)
         self.out_conv = nn.Conv2d(channels, 1, kernel_size=3, padding=1)
 
-    def forward(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, t: torch.Tensor,
+                y: torch.Tensor = None) -> torch.Tensor:
         """
         Predict the noise present in x at timestep t.
 
         Args:
             x (torch.Tensor): Noisy images of shape (B, 1, 28, 28).
             t (torch.Tensor): Integer timesteps of shape (B,).
+            y (torch.Tensor): Optional class labels of shape (B,). Required if
+                              the network was built with ``num_classes``; the
+                              index ``num_classes`` denotes the null class.
 
         Returns:
             torch.Tensor: Predicted noise of shape (B, 1, 28, 28).
         """
         t_emb = self.time_mlp(sinusoidal_embedding(t, self.time_dim))
+
+        # Add the class embedding (if conditional) to the timestep embedding,
+        # so every residual block sees the conditioning signal.
+        if self.num_classes is not None:
+            if y is None:
+                # Default to the null class -> unconditional prediction.
+                y = torch.full((x.size(0),), self.num_classes,
+                               device=x.device, dtype=torch.long)
+            t_emb = t_emb + self.class_emb(y)
 
         x0 = self.in_conv(x)
         d1 = self.down1(x0, t_emb)        # 28x28, C
@@ -145,18 +173,27 @@ class DDPM(nn.Module):
     Training objective (simplified, Ho et al.):
         L = E_{x_0, t, eps} || eps - eps_theta(x_t, t) ||^2
 
+    Setting ``num_classes`` builds a **class-conditional** model that can be
+    steered towards a chosen category and sampled with classifier-free guidance
+    (see ``sample_cfg``). With ``num_classes=None`` the model is unconditional
+    and behaves exactly as in C4-2.
+
     Args:
-        timesteps  (int): Number of diffusion steps T. Default: 1000.
-        beta_start (float): First (smallest) noise variance. Default: 1e-4.
-        beta_end   (float): Last (largest) noise variance. Default: 0.02.
-        channels   (int): Base channel width of the U-Net. Default: 64.
+        timesteps   (int): Number of diffusion steps T. Default: 1000.
+        beta_start  (float): First (smallest) noise variance. Default: 1e-4.
+        beta_end    (float): Last (largest) noise variance. Default: 0.02.
+        channels    (int): Base channel width of the U-Net. Default: 64.
+        num_classes (int): Number of conditioning classes, or None for an
+                           unconditional model. Default: None.
     """
 
     def __init__(self, timesteps: int = 1000, beta_start: float = 1e-4,
-                 beta_end: float = 0.02, channels: int = 64):
+                 beta_end: float = 0.02, channels: int = 64,
+                 num_classes: int = None):
         super().__init__()
         self.timesteps = timesteps
-        self.model = UNet(channels=channels)
+        self.num_classes = num_classes
+        self.model = UNet(channels=channels, num_classes=num_classes)
 
         # Linear variance schedule and the derived quantities used by the
         # closed-form forward process and the reverse sampling step.
@@ -191,15 +228,24 @@ class DDPM(nn.Module):
         sb = self.sqrt_one_minus_alphas_bar[t][:, None, None, None]
         return sa * x0 + sb * noise
 
-    def loss(self, x0: torch.Tensor) -> torch.Tensor:
+    def loss(self, x0: torch.Tensor, y: torch.Tensor = None,
+             p_uncond: float = 0.1) -> torch.Tensor:
         """
         Compute the simplified DDPM training loss for a batch of images.
 
         A random timestep is drawn per image, noise is added via q_sample,
         and the model is trained to predict that noise (MSE).
 
+        For a conditional model, the labels ``y`` are passed to the network.
+        To enable classifier-free guidance, a fraction ``p_uncond`` of the
+        labels is randomly replaced by the null class during training, so the
+        same network learns both the conditional and unconditional score.
+
         Args:
-            x0 (torch.Tensor): Clean images of shape (B, 1, 28, 28) in [-1, 1].
+            x0       (torch.Tensor): Clean images of shape (B, 1, 28, 28) in [-1, 1].
+            y        (torch.Tensor): Optional class labels of shape (B,).
+            p_uncond (float): Probability of dropping a label to the null class.
+                              Only used for conditional models. Default: 0.1.
 
         Returns:
             torch.Tensor: Scalar MSE loss.
@@ -208,7 +254,16 @@ class DDPM(nn.Module):
         t = torch.randint(0, self.timesteps, (B,), device=x0.device)
         noise = torch.randn_like(x0)
         x_t = self.q_sample(x0, t, noise)
-        noise_pred = self.model(x_t, t)
+
+        if self.num_classes is not None and y is not None:
+            # Randomly drop labels to the null class for classifier-free guidance.
+            drop = torch.rand(B, device=x0.device) < p_uncond
+            y = y.clone()
+            y[drop] = self.num_classes  # null-class index
+            noise_pred = self.model(x_t, t, y)
+        else:
+            noise_pred = self.model(x_t, t)
+
         return F.mse_loss(noise_pred, noise)
 
     @torch.no_grad()
@@ -327,6 +382,72 @@ class DDPM(nn.Module):
 
         if return_trajectory:
             return x, trajectory
+        return x
+
+    @torch.no_grad()
+    def sample_cfg(self, y: torch.Tensor, steps: int = 50,
+                   guidance_scale: float = 3.0, eta: float = 0.0,
+                   device: str = "cpu"):
+        """
+        Class-conditional sampling with classifier-free guidance (CFG).
+
+        At every reverse step the network is evaluated twice: once with the
+        requested class label and once with the null class. The two noise
+        predictions are combined as
+
+            eps = eps_uncond + w * (eps_cond - eps_uncond)
+
+        where ``w = guidance_scale``. Larger ``w`` pushes samples to match the
+        class more strongly (higher fidelity, lower diversity); ``w = 0``
+        recovers unconditional sampling and ``w = 1`` plain conditional
+        sampling. The reverse path uses the fast DDIM update from ``ddim_sample``.
+
+        Args:
+            y              (torch.Tensor): Class labels of shape (n,).
+            steps          (int): Number of DDIM reverse steps. Default: 50.
+            guidance_scale (float): CFG weight w. Default: 3.0.
+            eta            (float): DDIM stochasticity in [0, 1]. Default: 0.0.
+            device         (str): Target device. Default: "cpu".
+
+        Returns:
+            torch.Tensor: Generated images of shape (n, 1, 28, 28) in [-1, 1].
+        """
+        if self.num_classes is None:
+            raise ValueError("sample_cfg requires a conditional model (num_classes set).")
+
+        n = y.size(0)
+        y = y.to(device)
+        y_null = torch.full((n,), self.num_classes, device=device, dtype=torch.long)
+
+        step_indices = torch.linspace(0, self.timesteps - 1, steps,
+                                      device=device).long()
+        step_indices = torch.flip(step_indices, dims=[0])
+
+        x = torch.randn(n, 1, 28, 28, device=device)
+
+        for i, step in enumerate(step_indices):
+            t = torch.full((n,), step, device=device, dtype=torch.long)
+
+            # Two predictions: conditional and unconditional.
+            eps_cond = self.model(x, t, y)
+            eps_uncond = self.model(x, t, y_null)
+            noise_pred = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
+
+            alpha_bar = self.alphas_bar[step]
+            if i < len(step_indices) - 1:
+                alpha_bar_next = self.alphas_bar[step_indices[i + 1]]
+            else:
+                alpha_bar_next = torch.tensor(1.0, device=device)
+
+            x0_pred = (x - torch.sqrt(1 - alpha_bar) * noise_pred) / torch.sqrt(alpha_bar)
+            sigma = eta * torch.sqrt(
+                (1 - alpha_bar_next) / (1 - alpha_bar) * (1 - alpha_bar / alpha_bar_next)
+            )
+            dir_xt = torch.sqrt(1 - alpha_bar_next - sigma ** 2) * noise_pred
+            x = torch.sqrt(alpha_bar_next) * x0_pred + dir_xt
+            if eta > 0 and i < len(step_indices) - 1:
+                x = x + sigma * torch.randn_like(x)
+
         return x
 
     def save_model(self, path: str = "models/ddpm_fashion_mnist.pth"):

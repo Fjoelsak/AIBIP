@@ -23,3 +23,4 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - C4-1-ForwardDiffusion.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-1-ForwardDiffusion.ipynb)
 - C4-2-DDPM.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-2-DDPM.ipynb)
 - C4-3-DDIM.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-3-DDIM.ipynb)
+- C4-4-ConditionalCFG.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-4-ConditionalCFG.ipynb)

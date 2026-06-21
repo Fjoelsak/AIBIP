@@ -29,6 +29,7 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 
 ## C5 - Controllable Generation
 - C5-1-Img2Img_Inpainting.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Controllable_Generation/C5-1-Img2Img_Inpainting.ipynb)
+- C5-2-ControlNet.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Controllable_Generation/C5-2-ControlNet.ipynb)
 
 ## C6 - Evaluation
 - C6-1-Evaluation_Metrics.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C6-Evaluation/C6-1-Evaluation_Metrics.ipynb)

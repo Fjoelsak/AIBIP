@@ -26,3 +26,6 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - C4-4-ConditionalCFG.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-4-ConditionalCFG.ipynb)
 - C4-5-LatentDiffusion.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-5-LatentDiffusion.ipynb)
 - C4-6-StableDiffusion.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-6-StableDiffusion.ipynb)
+
+## C5 - Controllable Generation
+- C5-1-Img2Img_Inpainting.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Controllable_Generation/C5-1-Img2Img_Inpainting.ipynb)

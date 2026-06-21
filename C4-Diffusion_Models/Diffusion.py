@@ -475,3 +475,228 @@ class DDPM(nn.Module):
             print(f"Model loaded from {path}.")
         else:
             print(f"File {path} not found.")
+
+
+class LatentUNet(nn.Module):
+    """
+    Noise-prediction network for diffusion in a small latent space.
+
+    Unlike the pixel-space ``UNet`` (which pools 28x28 down to 7x7), the latent
+    is already tiny (e.g. 4x7x7), so this network keeps the spatial size fixed
+    at 7x7 and stacks timestep-conditioned residual blocks instead of pooling.
+    It supports optional class conditioning with a null class, exactly like
+    ``UNet``, so it can be used for classifier-free guidance.
+
+    Args:
+        in_channels (int): Channels of the latent (= autoencoder latent depth).
+        channels    (int): Base channel width. Default: 128.
+        time_dim    (int): Timestep embedding dimension. Default: 256.
+        num_classes (int): Number of conditioning classes, or None. Default: None.
+    """
+
+    def __init__(self, in_channels: int, channels: int = 128,
+                 time_dim: int = 256, num_classes: int = None):
+        super().__init__()
+        self.time_dim = time_dim
+        self.time_mlp = nn.Sequential(
+            nn.Linear(time_dim, time_dim),
+            nn.SiLU(),
+            nn.Linear(time_dim, time_dim),
+        )
+
+        self.num_classes = num_classes
+        if num_classes is not None:
+            self.class_emb = nn.Embedding(num_classes + 1, time_dim)
+
+        self.in_conv = nn.Conv2d(in_channels, channels, kernel_size=3, padding=1)
+        # Fixed-resolution residual stack operating entirely at 7x7.
+        self.block1 = ResidualBlock(channels, channels, time_dim)
+        self.block2 = ResidualBlock(channels, channels, time_dim)
+        self.block3 = ResidualBlock(channels, channels, time_dim)
+        self.out_norm = nn.GroupNorm(8, channels)
+        self.out_conv = nn.Conv2d(channels, in_channels, kernel_size=3, padding=1)
+
+    def forward(self, x: torch.Tensor, t: torch.Tensor,
+                y: torch.Tensor = None) -> torch.Tensor:
+        """
+        Predict the noise present in the latent x at timestep t.
+
+        Args:
+            x (torch.Tensor): Noisy latents of shape (B, in_channels, 7, 7).
+            t (torch.Tensor): Integer timesteps of shape (B,).
+            y (torch.Tensor): Optional class labels of shape (B,).
+
+        Returns:
+            torch.Tensor: Predicted noise, same shape as x.
+        """
+        t_emb = self.time_mlp(sinusoidal_embedding(t, self.time_dim))
+        if self.num_classes is not None:
+            if y is None:
+                y = torch.full((x.size(0),), self.num_classes,
+                               device=x.device, dtype=torch.long)
+            t_emb = t_emb + self.class_emb(y)
+
+        h = self.in_conv(x)
+        h = self.block1(h, t_emb)
+        h = self.block2(h, t_emb)
+        h = self.block3(h, t_emb)
+        return self.out_conv(F.silu(self.out_norm(h)))
+
+
+class LatentDDPM(nn.Module):
+    """
+    Latent Diffusion Model (Rombach et al., 2022) for Fashion-MNIST.
+
+    Runs the *same* DDPM machinery as ``DDPM`` but in the compressed latent
+    space of an autoencoder rather than in pixel space. The diffusion equations
+    are unchanged; only the data being diffused are latents of shape
+    ``(B, latent_channels, 7, 7)``. Supports class conditioning and
+    classifier-free guidance via ``sample_cfg``.
+
+    Typical use:
+        1. Train an ``AutoEncoder`` to compress images to latents.
+        2. Encode the dataset and train this model on the (frozen) latents.
+        3. Sample latents and decode them with the autoencoder.
+
+    Args:
+        latent_channels (int): Channel depth of the latents. Default: 4.
+        timesteps       (int): Number of diffusion steps T. Default: 1000.
+        beta_start      (float): First noise variance. Default: 1e-4.
+        beta_end        (float): Last noise variance. Default: 0.02.
+        channels        (int): Base channel width of the U-Net. Default: 128.
+        num_classes     (int): Number of conditioning classes, or None.
+    """
+
+    def __init__(self, latent_channels: int = 4, timesteps: int = 1000,
+                 beta_start: float = 1e-4, beta_end: float = 0.02,
+                 channels: int = 128, num_classes: int = None):
+        super().__init__()
+        self.timesteps = timesteps
+        self.latent_channels = latent_channels
+        self.num_classes = num_classes
+        self.model = LatentUNet(in_channels=latent_channels, channels=channels,
+                                num_classes=num_classes)
+
+        betas = torch.linspace(beta_start, beta_end, timesteps)
+        alphas = 1.0 - betas
+        alphas_bar = torch.cumprod(alphas, dim=0)
+
+        self.register_buffer("betas", betas)
+        self.register_buffer("alphas", alphas)
+        self.register_buffer("alphas_bar", alphas_bar)
+        self.register_buffer("sqrt_alphas_bar", torch.sqrt(alphas_bar))
+        self.register_buffer("sqrt_one_minus_alphas_bar", torch.sqrt(1.0 - alphas_bar))
+
+    def q_sample(self, z0: torch.Tensor, t: torch.Tensor,
+                 noise: torch.Tensor = None) -> torch.Tensor:
+        """Sample z_t from q(z_t | z_0) in closed form (latent forward process)."""
+        if noise is None:
+            noise = torch.randn_like(z0)
+        sa = self.sqrt_alphas_bar[t][:, None, None, None]
+        sb = self.sqrt_one_minus_alphas_bar[t][:, None, None, None]
+        return sa * z0 + sb * noise
+
+    def loss(self, z0: torch.Tensor, y: torch.Tensor = None,
+             p_uncond: float = 0.1) -> torch.Tensor:
+        """
+        Simplified DDPM loss on latents, with optional label dropout for CFG.
+
+        Args:
+            z0       (torch.Tensor): Clean latents of shape (B, C, 7, 7).
+            y        (torch.Tensor): Optional class labels of shape (B,).
+            p_uncond (float): Probability of dropping a label to the null class.
+
+        Returns:
+            torch.Tensor: Scalar MSE loss.
+        """
+        B = z0.size(0)
+        t = torch.randint(0, self.timesteps, (B,), device=z0.device)
+        noise = torch.randn_like(z0)
+        z_t = self.q_sample(z0, t, noise)
+
+        if self.num_classes is not None and y is not None:
+            drop = torch.rand(B, device=z0.device) < p_uncond
+            y = y.clone()
+            y[drop] = self.num_classes
+            noise_pred = self.model(z_t, t, y)
+        else:
+            noise_pred = self.model(z_t, t)
+
+        return F.mse_loss(noise_pred, noise)
+
+    def _latent_shape(self, n: int, size: int = 7):
+        return (n, self.latent_channels, size, size)
+
+    @torch.no_grad()
+    def sample_cfg(self, y: torch.Tensor, steps: int = 50,
+                   guidance_scale: float = 3.0, eta: float = 0.0,
+                   device: str = "cpu"):
+        """
+        Class-conditional latent sampling with classifier-free guidance.
+
+        Identical CFG / DDIM logic to ``DDPM.sample_cfg`` but producing latents
+        of shape (n, latent_channels, 7, 7), which must then be decoded by the
+        autoencoder to obtain images.
+
+        Args:
+            y              (torch.Tensor): Class labels of shape (n,).
+            steps          (int): Number of DDIM reverse steps. Default: 50.
+            guidance_scale (float): CFG weight w. Default: 3.0.
+            eta            (float): DDIM stochasticity in [0, 1]. Default: 0.0.
+            device         (str): Target device. Default: "cpu".
+
+        Returns:
+            torch.Tensor: Generated latents of shape (n, latent_channels, 7, 7).
+        """
+        if self.num_classes is None:
+            raise ValueError("sample_cfg requires a conditional model (num_classes set).")
+
+        n = y.size(0)
+        y = y.to(device)
+        y_null = torch.full((n,), self.num_classes, device=device, dtype=torch.long)
+
+        step_indices = torch.linspace(0, self.timesteps - 1, steps,
+                                      device=device).long()
+        step_indices = torch.flip(step_indices, dims=[0])
+
+        z = torch.randn(self._latent_shape(n), device=device)
+
+        for i, step in enumerate(step_indices):
+            t = torch.full((n,), step, device=device, dtype=torch.long)
+
+            eps_cond = self.model(z, t, y)
+            eps_uncond = self.model(z, t, y_null)
+            noise_pred = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
+
+            alpha_bar = self.alphas_bar[step]
+            if i < len(step_indices) - 1:
+                alpha_bar_next = self.alphas_bar[step_indices[i + 1]]
+            else:
+                alpha_bar_next = torch.tensor(1.0, device=device)
+
+            z0_pred = (z - torch.sqrt(1 - alpha_bar) * noise_pred) / torch.sqrt(alpha_bar)
+            sigma = eta * torch.sqrt(
+                (1 - alpha_bar_next) / (1 - alpha_bar) * (1 - alpha_bar / alpha_bar_next)
+            )
+            dir_zt = torch.sqrt(1 - alpha_bar_next - sigma ** 2) * noise_pred
+            z = torch.sqrt(alpha_bar_next) * z0_pred + dir_zt
+            if eta > 0 and i < len(step_indices) - 1:
+                z = z + sigma * torch.randn_like(z)
+
+        return z
+
+    def save_model(self, path: str = "models/latent_ddpm_fashion_mnist.pth"):
+        """Save the full model state dictionary."""
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        torch.save(self.state_dict(), path)
+        print(f"Model saved to {path}.")
+
+    def load_model(self, path: str = "models/latent_ddpm_fashion_mnist.pth",
+                   device: str = "cpu"):
+        """Load model state dictionary from file."""
+        if os.path.exists(path):
+            self.load_state_dict(torch.load(path, map_location=device))
+            self.to(device)
+            print(f"Model loaded from {path}.")
+        else:
+            print(f"File {path} not found.")

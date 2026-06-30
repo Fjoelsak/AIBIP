@@ -26,11 +26,9 @@ Here are the jupyter notebooks of the chapters available in colab for direct use
 - C4-4-ConditionalCFG.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-4-ConditionalCFG.ipynb)
 - C4-5-LatentDiffusion.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-5-LatentDiffusion.ipynb)
 - C4-6-StableDiffusion.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-6-StableDiffusion.ipynb)
+- C4-7-Img2Img_Inpainting.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-7-Img2Img_Inpainting.ipynb)
+- C4-8-ControlNet.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C4-Diffusion_Models/C4-8-ControlNet.ipynb)
 
-## C5 - Controllable Generation
-- C5-1-Img2Img_Inpainting.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Controllable_Generation/C5-1-Img2Img_Inpainting.ipynb)
-- C5-2-ControlNet.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Controllable_Generation/C5-2-ControlNet.ipynb)
-
-## C6 - Evaluation
-- C6-1-Evaluation_Metrics.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C6-Evaluation/C6-1-Evaluation_Metrics.ipynb)
-- C6-2-Risks_and_Responsibility.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C6-Evaluation/C6-2-Risks_and_Responsibility.ipynb)
+## C5 - Evaluation
+- C5-1-Evaluation_Metrics.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Evaluation/C5-1-Evaluation_Metrics.ipynb)
+- C5-2-Risks_and_Responsibility.ipynb  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Fjoelsak/AIBIP/blob/main/C5-Evaluation/C5-2-Risks_and_Responsibility.ipynb)
